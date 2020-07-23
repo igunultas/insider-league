@@ -14,6 +14,17 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:api')->get('/user', function (Request $request) {
-    return $request->user();
-});
+
+Route::get("/scoreTable/{season}/{week}", "ScoreTableController@getTable");
+
+Route::get("/playMatches/{season}/{week}", "MatchController@play");
+
+Route::post("/createFixture", "FixtureContorller@createFixtureForSeason");
+
+Route::get("/fixtures/{season}/{week}", "FixtureController@getFixtures");
+
+Route::get("/createSeason/{season}", "FixtureController@createFixtureForSeason");
+
+Route::get("/getPredictions/{week}", "MatchController@calculatePercentage");
+
+Route::get("/playAll/{season}", "MatchController@playAllMatches");

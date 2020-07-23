@@ -8,93 +8,228 @@
 
         <!-- Fonts -->
         <link href="https://fonts.googleapis.com/css?family=Nunito:200,600" rel="stylesheet">
+        <script   src="https://code.jquery.com/jquery-3.5.1.min.js"   integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0="   crossorigin="anonymous"></script>
 
         <!-- Styles -->
-        <style>
-            html, body {
-                background-color: #fff;
-                color: #636b6f;
-                font-family: 'Nunito', sans-serif;
-                font-weight: 200;
-                height: 100vh;
-                margin: 0;
-            }
-
-            .full-height {
-                height: 100vh;
-            }
-
-            .flex-center {
-                align-items: center;
-                display: flex;
-                justify-content: center;
-            }
-
-            .position-ref {
-                position: relative;
-            }
-
-            .top-right {
-                position: absolute;
-                right: 10px;
-                top: 18px;
-            }
-
-            .content {
-                text-align: center;
-            }
-
-            .title {
-                font-size: 84px;
-            }
-
-            .links > a {
-                color: #636b6f;
-                padding: 0 25px;
-                font-size: 13px;
-                font-weight: 600;
-                letter-spacing: .1rem;
-                text-decoration: none;
-                text-transform: uppercase;
-            }
-
-            .m-b-md {
-                margin-bottom: 30px;
-            }
-        </style>
+        <link href="/style.css" rel="stylesheet">
     </head>
     <body>
-        <div class="flex-center position-ref full-height">
-            @if (Route::has('login'))
-                <div class="top-right links">
-                    @auth
-                        <a href="{{ url('/home') }}">Home</a>
-                    @else
-                        <a href="{{ route('login') }}">Login</a>
-
-                        @if (Route::has('register'))
-                            <a href="{{ route('register') }}">Register</a>
-                        @endif
-                    @endauth
-                </div>
-            @endif
-
-            <div class="content">
-                <div class="title m-b-md">
-                    Laravel
-                </div>
-
-                <div class="links">
-                    <a href="https://laravel.com/docs">Docs</a>
-                    <a href="https://laracasts.com">Laracasts</a>
-                    <a href="https://laravel-news.com">News</a>
-                    <a href="https://blog.laravel.com">Blog</a>
-                    <a href="https://nova.laravel.com">Nova</a>
-                    <a href="https://forge.laravel.com">Forge</a>
-                    <a href="https://vapor.laravel.com">Vapor</a>
-                    <a href="https://github.com/laravel/laravel">GitHub</a>
-                </div>
+    <div id="content">
+    <h1 style="text-align: center">Season: {{$season}} - Week: <i id="currentWeek">1</i></h1>
+        @if($fixtures->count() < 1)
+            <div style="text-align: center;">
+                <a id="createSeason" onclick="createSeason();" href="javascript:;">Please click here to create the season</a>
             </div>
-        </div>
+        @else
+<div id="autoPlayInner">
+
+    <div style="width: 50%; float: left">
+
+                    <table style="border:1px solid #000">
+                    <thead>
+                    <tr>
+                        <th colspan="7" style="text-align: center">League Table</th>
+                    </tr>
+                    <tr>
+                        <th>Teams</th>
+                        <th>PTS</th>
+                        <th>P</th>
+                        <th>W</th>
+                        <th>D</th>
+                        <th>L</th>
+                        <th>GD</th>
+                    </tr>
+                    </thead>
+                        <tbody id="scoreTable">
+
+                        </tbody>
+                        <tfoot>
+                            <tr >
+                                <td colspan="6">
+                                    <button onclick="playMatches()">Play All</button>
+                                    <button onclick="autoPlay()">Play All Season Matches</button>
+                                </td>
+                                <td colspan="1" style="float: right; border: none"><button onclick="nextWeek()">Next Week</button></td>
+                            </tr>
+
+                        </tfoot>
+                    </table>
+    </div>
+    <div style="float: left; width: 20%;">
+        <table>
+            <thead>
+                <tr>
+                    <th colspan="3" style="text-align: center">Match Results</th>
+                </tr>
+            </thead>
+        <tbody id="matchResults"></tbody>
+        </table>
+    </div>
+
+    <div style="width: 20%; float: left">
+        <table >
+            <div id="predictionList"></div>
+        </table>
+    </div>
+
+</div>
+
+
+            <div style="margin-top:10px; width: auto; clear: both" id="autoplayresults">
+
+            </div>
+
+            @endif
+    </div>
+
+
     </body>
+
+    <script>
+        curSeason = {{$season}};
+        curWeek = 1;
+
+        $(document).ready(function(){
+
+            getScoreTable(curSeason,curWeek);
+            getFixtures(curSeason,curWeek);
+
+        });
+
+        function nextWeek(){
+
+            if (curWeek !== {{$fixtures->count() > 0 ? $fixtures->max("week") : 1}}) {
+                curWeek += 1;
+                $("#currentWeek").html(curWeek);
+            }
+            if(curWeek >= 4){
+                getPredictions()
+            }
+
+            getScoreTable(curSeason, curWeek);
+            getFixtures(curSeason, curWeek);
+
+
+        }
+
+        function getPredictions() {
+            $.ajax({
+                method: 'get',
+                url: "/api/getPredictions/"+curWeek,
+                success: function (data) {
+                    console.log(data);
+                    var predictions = $("#predictionList");
+                    predictions.html("");
+                    $.each(data, function(i,e){
+                        console.log(i,e)
+                        predictions.append('<tr><td>'+i+'</td><td>%'+parseFloat(e).toFixed(2)+'</td></tr>')
+                    });
+                }
+            })
+        }
+
+        function playMatches() {
+            $.ajax({
+                url: '/api/playMatches/'+curSeason+"/"+curWeek,
+                method: 'get',
+                success: function(){
+                    getFixtures(curSeason, curWeek);
+                    getScoreTable(curSeason, curWeek);
+                    if(curWeek >= 4){
+                        getPredictions()
+                    }
+                }
+            })
+        }
+
+        function getScoreTable(season, week) {
+            $.ajax({
+                type: "get",
+                url: "/api/scoreTable/"+season+"/"+week,
+                success: function (data){
+                    $("#scoreTable").html("");
+                    $.each(data, function(i, e){
+                        $("#scoreTable").append(' <tr>' +
+                            '<td>'+e.name+'</td>' +
+                            '<td>'+e.pts+'</td>' +
+                            '<td>'+e.p+'</td>' +
+                            '<td>'+e.w+'</td>' +
+                            '<td>'+e.d+'</td>' +
+                            '<td>'+e.l+'</td>' +
+                            '<td>'+e.gd+'</td>' +
+                            '</tr>');
+                    })
+
+                }
+            })
+        }
+
+        function getFixtures(season, week) {
+            $.ajax({
+                type: "get",
+                url: "/api/fixtures/"+season+"/"+week,
+                success: function (data) {
+                    $("#matchResults").html('');
+                    $.each(data, function(i,e){
+                        $("#matchResults").append('<tr>' +
+                            '                    <td>'+e.home.name+'</td>' +
+                            '                    <td>'+scoreShower(e["match"])+'</td>' +
+                            '                    <td>'+e.away.name+'</td>' +
+                            '                </tr>')
+                    })
+                }//not handling error
+            });
+        }
+
+        function scoreShower(match){
+            if(match === null)
+                return "TBD"
+
+            return match.homeScore + " - " + match.awayScore;
+
+        }
+
+        function createSeason() {
+            $.ajax({
+                url: '/api/createSeason/'+curSeason,
+                method: 'get',
+                success: function(){
+                    location.reload();
+                }
+            })
+        }
+
+        function autoPlay() {
+            $.ajax({
+               url: '/api/playAll/'+curSeason,
+               method: 'get',
+               success: function (data) {
+
+                    $.each(data, function(i,e){
+                        $("#autoplayresults").append('<table style="width:auto">' +
+                            '                    <thead>\n' +
+                            '                    <tr>\n' +
+                            '                        <th colspan="3" style="text-align: center">Match Results - Week '+i+++'</th>\n' +
+                            '                    </tr>\n' +
+                            '                    </thead>\n' +
+                            '                    <tbody id="matchResults">');
+
+                                $.each(e, function(innerIndex, innerVal){
+                                    console.log(innerVal);
+                                    $("#autoplayresults").append('<tr>' +
+                                        '                    <td>'+innerVal.home.name+'</td>' +
+                                        '                    <td>'+scoreShower(innerVal["match"])+'</td>' +
+                                        '                    <td>'+innerVal.away.name+'</td>' +
+                                        '                </tr>')
+                                });
+                            $("#autoplayresults").append('</tbody></table>');
+
+                    });
+                   getScoreTable(curSeason, curWeek);
+                   getFixtures(curSeason, curWeek);
+               }
+            });
+        }
+
+    </script>
 </html>
